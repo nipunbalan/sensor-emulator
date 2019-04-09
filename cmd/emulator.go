@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/nipunbalan/sensorsim/messaging"
+
 	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
 )
@@ -48,7 +49,9 @@ func runSensor(name string, freq int64, sensorType string) {
 
 	deliveries := make(chan string, 4096)
 
-	go messaging.InitMQTTClient(name, &deliveries)
+	dataratereadseconds := viper.GetInt("messaging.dataratereadseconds")
+
+	go messaging.InitMQTTClient(name, &deliveries, dataratereadseconds)
 
 	// Rate limiter limits the number of sensor values read per second
 	limit := rate.Limit(freq)
@@ -57,25 +60,30 @@ func runSensor(name string, freq int64, sensorType string) {
 
 	//Get Filename and open the file
 	fileNameStr := viper.GetString("sensors." + name + ".file")
-	file, err := os.Open(fileNameStr)
-	defer file.Close()
-	failOnError(err, "Error!. Unable to open the file!!")
 
-	reader := bufio.NewReader(file)
-	scanner := bufio.NewScanner(reader)
+	for {
+		file, err := os.Open(fileNameStr)
 
-	for i := 0; scanner.Scan(); i++ {
-		if i == 0 {
+		failOnError(err, "Error!. Unable to open the file!!")
+
+		reader := bufio.NewReader(file)
+		scanner := bufio.NewScanner(reader)
+
+		for i := 0; scanner.Scan(); i++ {
+			if i == 0 {
+				i++
+				continue
+			}
+			limiter.Wait(cntx)
+			line := scanner.Text()
+			body := name + " : " + line
+			//Sending it to MQTTClient through the channel
+			deliveries <- body
+			//	log.Println(name + " : " + body)
+			failOnError(err, "Failed to publish a message")
 			i++
-			continue
+			//	fmt.Printf("Record Sending Rate: %d records per second\n", counter.Rate())
 		}
-		limiter.Wait(cntx)
-		line := scanner.Text()
-		body := name + " : " + line
-		//Sending it to MQTTClient through the channel
-		deliveries <- body
-		//	log.Println(name + " : " + body)
-		failOnError(err, "Failed to publish a message")
-		i++
+		file.Close()
 	}
 }

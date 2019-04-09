@@ -2,14 +2,15 @@ package messaging
 
 import (
 	"fmt"
-
-	"github.com/spf13/viper"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	RATECOUNTER "github.com/paulbellamy/ratecounter"
+	"github.com/spf13/viper"
 )
 
 //InitMQTTClient Initiates the MQTT client and connects to the broker
-func InitMQTTClient(clientid string, deliveries *chan string) {
+func InitMQTTClient(clientid string, deliveries *chan string, dataRateReadSeconds int) {
 
 	topic := viper.GetString("messaging.topic")
 	broker := viper.GetString("messaging.broker")
@@ -50,9 +51,21 @@ func InitMQTTClient(clientid string, deliveries *chan string) {
 	}
 	defer client.Disconnect(250)
 	fmt.Printf("Sensor: %s data started publsihing to topic: %s \n", clientid, topic)
+	counter := RATECOUNTER.NewRateCounter(1 * time.Second)
+
+	//Go routine to print out data sending rate
+	go func() {
+		for {
+			fmt.Printf("%s | Sending rate of '%s' : %d \t records/sec\n", time.Now().Format(time.RFC3339), clientid, counter.Rate())
+			time.Sleep(time.Second * time.Duration(dataRateReadSeconds))
+		}
+	}()
+
 	for {
 		payload := <-*deliveries
 		token := client.Publish(topic, byte(qos), false, payload)
 		token.Wait()
+		counter.Incr(1)
+		//fmt.Printf("Rate of %s:%d records/sec\n", clientid, counter.Rate())
 	}
 }

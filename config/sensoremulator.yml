@@ -2,45 +2,46 @@ messaging:
   protocol: mqtt
   topic: sensordata
   broker: localhost:1883
+  dataratereadseconds: 10
 
 sensors:
   sensor01:
     type: temperature
-    freq: 20
+    freq: 3000
     file: ./data/sensor01.dat
   sensor02:
     type: vibration
-    freq: 20
+    freq: 3000
     file: ./data/sensor02.dat
-#  sensor03:
-#    type: no2
-#    freq: 600
-#    file: ./data/sensor03.dat
-#  sensor04:
-#    type: co2
-#    freq: 600 
-#    file: ./data/sensor04.dat
-#  sensor05:
-#    type: temperature
-#    freq: 600
-#    file: ./data/sensor05.dat
-#  sensor06:
-#    type: vibration
-#    freq: 600
-#    file: ./data/sensor06.dat
-#  sensor07:
-#    type: co2
-#    freq: 600
-#    file: ./data/sensor07.dat
-#  sensor08:
-#    type: temperature
-#    freq: 600
-#    file: ./data/sensor08.dat
-#  sensor09:
-#    type: no2
-#    freq: 600
-#    file: ./data/sensor09.dat
-#  sensor10:
-#    type: temperature
-#    freq: 600
-#    file: ./data/sensor10.dat               
+  sensor03:
+    type: no2
+    freq: 600
+    file: ./data/sensor03.dat
+  sensor04:
+    type: co2
+    freq: 600 
+    file: ./data/sensor04.dat
+  sensor05:
+    type: temperature
+    freq: 600
+    file: ./data/sensor05.dat
+  sensor06:
+    type: vibration
+    freq: 600
+    file: ./data/sensor06.dat
+  sensor07:
+    type: co2
+    freq: 600
+    file: ./data/sensor07.dat
+  sensor08:
+    type: temperature
+    freq: 600
+    file: ./data/sensor08.dat
+  sensor09:
+    type: no2
+    freq: 600
+    file: ./data/sensor09.dat
+  sensor10:
+    type: temperature
+    freq: 600
+    file: ./data/sensor10.dat               
