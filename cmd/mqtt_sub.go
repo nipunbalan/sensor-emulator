@@ -1,18 +1,17 @@
-package messaging
+package cmd
 
 import (
 	"fmt"
-	"time"
+	"os"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
-	RATECOUNTER "github.com/paulbellamy/ratecounter"
 	"github.com/spf13/viper"
 )
 
 //InitMQTTClient Initiates the MQTT client and connects to the broker
-func InitMQTTClient(clientid string, deliveries *chan string, dataRateReadSeconds int) {
+func InitMQTTClient(clientid string, deliveries *chan string) {
 
-	topic := viper.GetString("messaging.data_topic")
+	topic := viper.GetString("messaging.command_topic")
 	broker := viper.GetString("messaging.broker")
 	//	password := viper.GetString("messaging.password")
 	//	user := viper.GetString("messaging.user")
@@ -45,28 +44,27 @@ func InitMQTTClient(clientid string, deliveries *chan string, dataRateReadSecond
 		opts.SetStore(MQTT.NewFileStore(store))
 	}
 
+	choke := make(chan [2]string)
+
+	opts.SetDefaultPublishHandler(func(client MQTT.Client, msg MQTT.Message) {
+		choke <- [2]string{msg.Topic(), string(msg.Payload())}
+	})
+
 	client := MQTT.NewClient(opts)
+	defer client.Disconnect(250)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
-	defer client.Disconnect(250)
-	fmt.Printf("Sensor: %s data started publishing to topic: %s \n", clientid, topic)
-	counter := RATECOUNTER.NewRateCounter(1 * time.Second)
 
-	//Go routine to print out data sending rate
-	go func() {
-		for {
-			//	fmt.Printf("%s | Sending rate of '%s' : %d \t records/sec\n", time.Now().Format(time.RFC3339), clientid, counter.Rate())
-			fmt.Printf("%d | Sending rate of '%s' : %d \t records/sec\n", time.Now().UnixNano(), clientid, counter.Rate())
-			time.Sleep(time.Second * time.Duration(dataRateReadSeconds))
-		}
-	}()
+	if token := client.Subscribe(topic, byte(qos), nil); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
+		os.Exit(1)
+	}
 
 	for {
-		payload := <-*deliveries
-		token := client.Publish(topic, byte(qos), false, payload)
-		token.Wait()
-		counter.Incr(1)
-		//fmt.Printf("Rate of %s:%d records/sec\n", clientid, counter.Rate())
+		incoming := <-choke
+		*deliveries <- incoming[1]
+		//	fmt.Printf("RECEIVED TOPIC: %s MESSAGE: %s\n", incoming[0], incoming[1])
 	}
+
 }

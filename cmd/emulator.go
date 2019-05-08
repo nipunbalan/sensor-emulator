@@ -23,27 +23,48 @@ func failOnError(err error, msg string) {
 
 var wg = sync.WaitGroup{}
 
-func runEmulator() {
-	//fmt.Println("Sensor emulator running")
+// RunEmulator runs the sensor emulator
+func RunEmulator(sensorCmdGoChan *chan string) {
+
+	rateLimitChannelMap := make(map[string](chan int64))
+
 	sensors := viper.GetStringMap("sensors")
+
+	//Go routine to receive commands and dispatch it to corresponding sensor threads
+	go func() {
+		for {
+			cmd := <-*sensorCmdGoChan
+			fmt.Printf("Received '%s'", cmd)
+			sensorid := ""
+			dataRate := 0
+			fmt.Sscanf(cmd, "%s %d", &sensorid, &dataRate)
+			fmt.Printf("Sensor:%s|NewDataRate:%d\n", sensorid, dataRate)
+			rateLimitChannelMap[sensorid] <- int64(dataRate)
+			fmt.Printf("Sent\n")
+
+		}
+	}()
 
 	for key := range sensors {
 
-		fmt.Print(key + ":")
+		rateLimitChannelMap[key] = make(chan int64)
 
 		sensorfreq := viper.GetInt64("sensors." + key + ".freq")
 		sensorTypeStr := viper.GetString("sensors." + key + ".type")
 
 		wg.Add(1)
+
 		fmt.Println("Key: " + key + " | Frequency: " + strconv.FormatInt(int64(sensorfreq), 10) + " | Type: " + sensorTypeStr)
-		go runSensor(key, sensorfreq, sensorTypeStr)
+
+		go runSensor(key, sensorfreq, sensorTypeStr, rateLimitChannelMap[key])
 
 	}
+
 	wg.Wait()
 
 }
 
-func runSensor(name string, freq int64, sensorType string) {
+func runSensor(name string, freq int64, sensorType string, rateLimitChannelMap chan int64) {
 
 	defer wg.Done()
 
@@ -61,6 +82,16 @@ func runSensor(name string, freq int64, sensorType string) {
 	//Get Filename and open the file
 	fileNameStr := viper.GetString("sensors." + name + ".file")
 
+	//Go routine to set new limit
+	go func() {
+		for {
+			newlimit := <-rateLimitChannelMap
+			limit := rate.Limit(newlimit)
+			fmt.Printf("Setting new data rate '%d' on the sensor '%s'\n", newlimit, name)
+			limiter.SetLimit(limit)
+		}
+	}()
+
 	for {
 		file, err := os.Open(fileNameStr)
 
@@ -70,6 +101,7 @@ func runSensor(name string, freq int64, sensorType string) {
 		scanner := bufio.NewScanner(reader)
 
 		for i := 0; scanner.Scan(); i++ {
+			//Skip header
 			if i == 0 {
 				i++
 				continue
@@ -79,7 +111,7 @@ func runSensor(name string, freq int64, sensorType string) {
 			body := name + " : " + line
 			//Sending it to MQTTClient through the channel
 			deliveries <- body
-			//	log.Println(name + " : " + body)
+			//log.Println(name + " : " + body)
 			failOnError(err, "Failed to publish a message")
 			i++
 			//	fmt.Printf("Record Sending Rate: %d records per second\n", counter.Rate())
