@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/nipunbalan/sensorsim/cmd"
+import "github.com/nipunbalan/sensor-emulator/cmd"
 
 func main() {
 	cmd.Execute()

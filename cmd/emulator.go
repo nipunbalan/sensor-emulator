@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/nipunbalan/sensorsim/messaging"
+	"github.com/nipunbalan/sensor-emulator/messaging"
 
 	"github.com/spf13/viper"
 	"golang.org/x/time/rate"
