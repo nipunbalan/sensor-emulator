@@ -109,7 +109,7 @@ func runSensor(name string, freq int64, sensorType string, rateLimitChannelMap c
 			}
 			limiter.Wait(cntx)
 			line := scanner.Text()
-			body := string(time.Now().UnixNano()) + "," + name + " : " + line
+			body := fmt.Sprintf("%d,%s,%s", time.Now().UnixNano(), name, line)
 			//Sending it to MQTTClient through the channel
 			deliveries <- body
 			//log.Println(name + " : " + body)
