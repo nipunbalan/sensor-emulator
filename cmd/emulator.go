@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/nipunbalan/sensor-emulator/messaging"
 
@@ -108,7 +109,7 @@ func runSensor(name string, freq int64, sensorType string, rateLimitChannelMap c
 			}
 			limiter.Wait(cntx)
 			line := scanner.Text()
-			body := name + " : " + line
+			body := string(time.Now().UnixNano()) + "," + name + " : " + line
 			//Sending it to MQTTClient through the channel
 			deliveries <- body
 			//log.Println(name + " : " + body)
