@@ -17,7 +17,7 @@ func InitMQTTClient(clientid string, deliveries *chan string) {
 	//	user := viper.GetString("messaging.user")
 	id := clientid
 	cleansess := false
-	qos := 1
+	qos := 2
 	store := ":memory:"
 
 	//fmt.Println("Topic:" + broker)
